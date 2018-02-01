@@ -20,9 +20,9 @@
 #include <keymaster/UniquePtr.h>
 
 #include <hardware/keymaster_defs.h>
+#include <keymaster/android_keymaster_utils.h>
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/serializable.h>
-#include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
 
@@ -515,12 +515,14 @@ class AuthorizationSetBuilder {
     AuthorizationSetBuilder& RsaKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& EcdsaKey(uint32_t key_size);
     AuthorizationSetBuilder& AesKey(uint32_t key_size);
+    AuthorizationSetBuilder& TripleDesKey(uint32_t key_size);
     AuthorizationSetBuilder& HmacKey(uint32_t key_size);
 
     AuthorizationSetBuilder& RsaSigningKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& RsaEncryptionKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& EcdsaSigningKey(uint32_t key_size);
     AuthorizationSetBuilder& AesEncryptionKey(uint32_t key_size);
+    AuthorizationSetBuilder& TripleDesEncryptionKey(uint32_t key_size);
 
     AuthorizationSetBuilder& SigningKey();
     AuthorizationSetBuilder& EncryptionKey();
@@ -529,6 +531,10 @@ class AuthorizationSetBuilder {
 
     AuthorizationSetBuilder& Digest(keymaster_digest_t digest) {
         return Authorization(TAG_DIGEST, digest);
+    }
+
+    AuthorizationSetBuilder& BlockMode(keymaster_block_mode_t mode) {
+        return Authorization(TAG_BLOCK_MODE, mode);
     }
 
     AuthorizationSetBuilder& Padding(keymaster_padding_t padding) {
@@ -566,6 +572,11 @@ inline AuthorizationSetBuilder& AuthorizationSetBuilder::AesKey(uint32_t key_siz
     return Authorization(TAG_KEY_SIZE, key_size);
 }
 
+inline AuthorizationSetBuilder& AuthorizationSetBuilder::TripleDesKey(uint32_t key_size) {
+    Authorization(TAG_ALGORITHM, KM_ALGORITHM_TRIPLE_DES);
+    return Authorization(TAG_KEY_SIZE, key_size);
+}
+
 inline AuthorizationSetBuilder& AuthorizationSetBuilder::HmacKey(uint32_t key_size) {
     Authorization(TAG_ALGORITHM, KM_ALGORITHM_HMAC);
     Authorization(TAG_KEY_SIZE, key_size);
@@ -591,6 +602,11 @@ inline AuthorizationSetBuilder& AuthorizationSetBuilder::EcdsaSigningKey(uint32_
 
 inline AuthorizationSetBuilder& AuthorizationSetBuilder::AesEncryptionKey(uint32_t key_size) {
     AesKey(key_size);
+    return EncryptionKey();
+}
+
+inline AuthorizationSetBuilder& AuthorizationSetBuilder::TripleDesEncryptionKey(uint32_t key_size) {
+    TripleDesKey(key_size);
     return EncryptionKey();
 }
 
@@ -671,29 +687,35 @@ private:
 };
 
 class AuthProxy {
-public:
+  public:
     AuthProxy(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced)
-        : hw_enforced_(hw_enforced),
-          sw_enforced_(sw_enforced) {
-    }
+        : hw_enforced_(hw_enforced), sw_enforced_(sw_enforced) {}
 
-    template<typename... ARGS>
-    bool Contains(ARGS&&... args) const {
+    template <typename... ARGS> bool Contains(ARGS&&... args) const {
         return hw_enforced_.Contains(forward<ARGS>(args)...) ||
                sw_enforced_.Contains(forward<ARGS>(args)...);
     }
-    template<typename... ARGS>
-    bool GetTagValue(ARGS&&... args) const {
+
+    template <typename... ARGS> bool GetTagValue(ARGS&&... args) const {
         return hw_enforced_.GetTagValue(forward<ARGS>(args)...) ||
                sw_enforced_.GetTagValue(forward<ARGS>(args)...);
     }
+
     AuthProxyIterator begin() const {
         return AuthProxyIterator(hw_enforced_, sw_enforced_);
     }
-    AuthProxyIterator end() const {
-        return AuthProxyIterator();
+
+    AuthProxyIterator end() const { return AuthProxyIterator(); }
+
+    size_t size() const { return hw_enforced_.size() + sw_enforced_.size(); }
+
+    keymaster_key_param_t operator[](size_t pos) const {
+        if (pos < hw_enforced_.size()) return hw_enforced_[pos];
+        if (pos < sw_enforced_.size()) return sw_enforced_[pos - hw_enforced_.size()];
+        return {};
     }
-private:
+
+  private:
     const AuthorizationSet& hw_enforced_;
     const AuthorizationSet& sw_enforced_;
 };

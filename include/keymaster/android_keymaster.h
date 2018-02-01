@@ -49,6 +49,7 @@ class AndroidKeymaster {
   public:
     AndroidKeymaster(KeymasterContext* context, size_t operation_table_size);
     virtual ~AndroidKeymaster();
+    AndroidKeymaster(AndroidKeymaster&&);
 
     void GetVersion(const GetVersionRequest& request, GetVersionResponse* response);
     void SupportedAlgorithms(const SupportedAlgorithmsRequest& request,
@@ -66,6 +67,7 @@ class AndroidKeymaster {
 
     GetHmacSharingParametersResponse GetHmacSharingParameters();
     ComputeSharedHmacResponse ComputeSharedHmac(const ComputeSharedHmacRequest& request);
+    VerifyAuthorizationResponse VerifyAuthorization(const VerifyAuthorizationRequest& request);
 
     void AddRngEntropy(const AddEntropyRequest& request, AddEntropyResponse* response);
     void Configure(const ConfigureRequest& request, ConfigureResponse* response);
@@ -73,6 +75,8 @@ class AndroidKeymaster {
     void GetKeyCharacteristics(const GetKeyCharacteristicsRequest& request,
                                GetKeyCharacteristicsResponse* response);
     void ImportKey(const ImportKeyRequest& request, ImportKeyResponse* response);
+    void ImportWrappedKey(const ImportWrappedKeyRequest& request,
+                          ImportWrappedKeyResponse* response);
     void ExportKey(const ExportKeyRequest& request, ExportKeyResponse* response);
     void AttestKey(const AttestKeyRequest& request, AttestKeyResponse* response);
     void UpgradeKey(const UpgradeKeyRequest& request, UpgradeKeyResponse* response);

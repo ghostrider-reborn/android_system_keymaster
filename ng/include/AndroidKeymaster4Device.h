@@ -33,20 +33,22 @@ using ::android::sp;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::keymaster::V4_0::KeyFormat;
 using ::android::hardware::keymaster::V4_0::ErrorCode;
+using ::android::hardware::keymaster::V4_0::HardwareAuthenticatorType;
 using ::android::hardware::keymaster::V4_0::HardwareAuthToken;
 using ::android::hardware::keymaster::V4_0::HmacSharingParameters;
 using ::android::hardware::keymaster::V4_0::IKeymasterDevice;
 using ::android::hardware::keymaster::V4_0::KeyCharacteristics;
+using ::android::hardware::keymaster::V4_0::KeyFormat;
 using ::android::hardware::keymaster::V4_0::KeyParameter;
 using ::android::hardware::keymaster::V4_0::KeyPurpose;
+using ::android::hardware::keymaster::V4_0::SecurityLevel;
 using ::android::hardware::keymaster::V4_0::Tag;
 using ::android::hardware::keymaster::V4_0::VerificationToken;
 
 class AndroidKeymaster4Device : public IKeymasterDevice {
   public:
-    AndroidKeymaster4Device();
+    AndroidKeymaster4Device(SecurityLevel securityLevel);
     virtual ~AndroidKeymaster4Device();
 
     Return<void> getHardwareInfo(getHardwareInfo_cb _hidl_cb) override;
@@ -69,6 +71,8 @@ class AndroidKeymaster4Device : public IKeymasterDevice {
     Return<void> importWrappedKey(const hidl_vec<uint8_t>& wrappedKeyData,
                                   const hidl_vec<uint8_t>& wrappingKeyBlob,
                                   const hidl_vec<uint8_t>& maskingKey,
+                                  const hidl_vec<KeyParameter>& unwrappingParams,
+                                  uint64_t passwordSid, uint64_t biometricSid,
                                   importWrappedKey_cb _hidl_cb) override;
     Return<void> exportKey(KeyFormat exportFormat, const hidl_vec<uint8_t>& keyBlob,
                            const hidl_vec<uint8_t>& clientId, const hidl_vec<uint8_t>& appData,
@@ -96,9 +100,10 @@ class AndroidKeymaster4Device : public IKeymasterDevice {
 
   private:
     std::unique_ptr<::keymaster::AndroidKeymaster> impl_;
+    SecurityLevel securityLevel_;
 };
 
-IKeymasterDevice* CreateKeymasterDevice();
+IKeymasterDevice* CreateKeymasterDevice(SecurityLevel securityLevel);
 
 }  // namespace ng
 }  // namespace V4_0

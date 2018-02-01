@@ -72,19 +72,20 @@ class AccessCountMap {
     const uint32_t max_size_;
 };
 
-bool is_public_key_algorithm(const AuthorizationSet& auth_set) {
+bool is_public_key_algorithm(const AuthProxy& auth_set) {
     keymaster_algorithm_t algorithm;
     return auth_set.GetTagValue(TAG_ALGORITHM, &algorithm) &&
            (algorithm == KM_ALGORITHM_RSA || algorithm == KM_ALGORITHM_EC);
 }
 
 static keymaster_error_t authorized_purpose(const keymaster_purpose_t purpose,
-                                            const AuthorizationSet& auth_set) {
+                                            const AuthProxy& auth_set) {
     switch (purpose) {
     case KM_PURPOSE_VERIFY:
     case KM_PURPOSE_ENCRYPT:
     case KM_PURPOSE_SIGN:
     case KM_PURPOSE_DECRYPT:
+    case KM_PURPOSE_WRAP:
         if (auth_set.Contains(TAG_PURPOSE, purpose))
             return KM_ERROR_OK;
         return KM_ERROR_INCOMPATIBLE_PURPOSE;
@@ -114,7 +115,7 @@ KeymasterEnforcement::~KeymasterEnforcement() {
 
 keymaster_error_t KeymasterEnforcement::AuthorizeOperation(const keymaster_purpose_t purpose,
                                                            const km_id_t keyid,
-                                                           const AuthorizationSet& auth_set,
+                                                           const AuthProxy& auth_set,
                                                            const AuthorizationSet& operation_params,
                                                            keymaster_operation_handle_t op_handle,
                                                            bool is_begin_operation) {
@@ -128,6 +129,7 @@ keymaster_error_t KeymasterEnforcement::AuthorizeOperation(const keymaster_purpo
         case KM_PURPOSE_DECRYPT:
         case KM_PURPOSE_SIGN:
         case KM_PURPOSE_DERIVE_KEY:
+        case KM_PURPOSE_WRAP:
             break;
         };
     };
@@ -141,7 +143,7 @@ keymaster_error_t KeymasterEnforcement::AuthorizeOperation(const keymaster_purpo
 // For update and finish the only thing to check is user authentication, and then only if it's not
 // timeout-based.
 keymaster_error_t
-KeymasterEnforcement::AuthorizeUpdateOrFinish(const AuthorizationSet& auth_set,
+KeymasterEnforcement::AuthorizeUpdateOrFinish(const AuthProxy& auth_set,
                                               const AuthorizationSet& operation_params,
                                               keymaster_operation_handle_t op_handle) {
     int auth_type_index = -1;
@@ -188,7 +190,7 @@ KeymasterEnforcement::AuthorizeUpdateOrFinish(const AuthorizationSet& auth_set,
 
 keymaster_error_t KeymasterEnforcement::AuthorizeBegin(const keymaster_purpose_t purpose,
                                                        const km_id_t keyid,
-                                                       const AuthorizationSet& auth_set,
+                                                       const AuthProxy& auth_set,
                                                        const AuthorizationSet& operation_params) {
     // Find some entries that may be needed to handle KM_TAG_USER_SECURE_ID
     int auth_timeout_index = -1;
@@ -406,7 +408,7 @@ bool KeymasterEnforcement::MaxUsesPerBootNotExceeded(const km_id_t keyid, uint32
     return key_access_count < max_uses;
 }
 
-bool KeymasterEnforcement::AuthTokenMatches(const AuthorizationSet& auth_set,
+bool KeymasterEnforcement::AuthTokenMatches(const AuthProxy& auth_set,
                                             const AuthorizationSet& operation_params,
                                             const uint64_t user_secure_id,
                                             const int auth_type_index, const int auth_timeout_index,
